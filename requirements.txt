@@ -1,0 +1,7 @@
+pyswisseph>=2.10.3
+pytz
+timezonefinder
+fastapi
+uvicorn
+pydantic
+requests

@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vedic Astrology Chart</title>
+<style>
+  :root {
+    --border: #d8d4cc;
+    --bg: #faf8f4;
+    --card-bg: #ffffff;
+    --text: #2b2620;
+    --muted: #7a7468;
+    --accent: #7a4a2b;
+    --accent-dark: #5c3720;
+    --error-bg: #fbeaea;
+    --error-border: #d9534f;
+    --error-text: #8a2c28;
+    --retro: #b8452e;
+    --chart-line: #b8a98f;
+    --chart-border: #5c3720;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.4;
+  }
+  .container {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  h1 {
+    font-size: 1.6rem;
+    margin-bottom: 4px;
+  }
+  .subtitle {
+    color: var(--muted);
+    margin-top: 0;
+    margin-bottom: 28px;
+    font-size: 0.95rem;
+  }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  form .field {
+    margin-bottom: 16px;
+    position: relative;
+  }
+  label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+  }
+  input[type="text"], input[type="date"], input[type="time"] {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 1rem;
+    background: #fff;
+    color: var(--text);
+  }
+  input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  .row {
+    display: flex;
+    gap: 16px;
+  }
+  .row .field {
+    flex: 1;
+  }
+  button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    padding: 11px 22px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) {
+    background: var(--accent-dark);
+  }
+  button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .status {
+    margin-top: 14px;
+    font-size: 0.9rem;
+    color: var(--muted);
+  }
+  .error {
+    margin-top: 14px;
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    color: var(--error-text);
+    padding: 10px 14px;
+    border-radius: 5px;
+    font-size: 0.9rem;
+    white-space: pre-wrap;
+  }
+  h2 {
+    font-size: 1.15rem;
+    margin-top: 0;
+    margin-bottom: 14px;
+  }
+  h3 {
+    font-size: 1rem;
+    margin: 0 0 10px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    color: var(--muted);
+    font-weight: 600;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  .retro {
+    color: var(--retro);
+    font-weight: 600;
+  }
+  .lagna-line {
+    font-size: 1.05rem;
+    margin-bottom: 4px;
+  }
+  .lagna-line strong {
+    color: var(--accent-dark);
+  }
+  .muted {
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  details {
+    border-bottom: 1px solid var(--border);
+    padding: 8px 0;
+  }
+  details:last-child {
+    border-bottom: none;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.92rem;
+    padding: 4px 0;
+  }
+  summary:hover {
+    color: var(--accent);
+  }
+  #results {
+    display: none;
+  }
+
+  /* Place autocomplete */
+  .suggestions {
+    position: absolute;
+    z-index: 10;
+    top: 100%;
+    left: 0;
+    right: 0;
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+  }
+  .suggestions li {
+    padding: 8px 10px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .suggestions li:last-child {
+    border-bottom: none;
+  }
+  .suggestions li:hover {
+    background: #f3ede4;
+  }
+  .place-hint {
+    margin: 6px 0 0;
+    font-size: 0.78rem;
+  }
+
+  /* North Indian diamond chart */
+  .ni-chart-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0 4px;
+  }
+  .ni-chart {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+  }
+  .ni-border {
+    stroke: var(--chart-border);
+    stroke-width: 2;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .ni-line {
+    stroke: var(--chart-line);
+    stroke-width: 1.5;
+    fill: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .ni-housenum {
+    font-size: 10px;
+    fill: var(--muted);
+    font-weight: 600;
+  }
+  .ni-planet {
+    font-size: 12px;
+    fill: var(--text);
+    font-weight: 600;
+  }
+  .ni-legend {
+    margin-top: 12px;
+    text-align: right;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Vedic Astrology Chart</h1>
+  <p class="subtitle">Enter birth details to generate a full sidereal chart.</p>
+
+  <div class="card">
+    <form id="birth-form">
+      <div class="field">
+        <label for="name">Name</label>
+        <input type="text" id="name" required>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label for="dob">Date of Birth (dd/mm/yyyy)</label>
+          <input type="date" id="dob" required>
+        </div>
+        <div class="field">
+          <label for="tob">Time of Birth (AM/PM)</label>
+          <input type="time" id="tob" required>
+        </div>
+      </div>
+      <div class="field">
+        <label for="place">Place of Birth</label>
+        <input type="text" id="place" placeholder="Start typing a city…" autocomplete="off" required>
+        <ul id="place-suggestions" class="suggestions" hidden></ul>
+        <p id="place-hint" class="muted place-hint" style="display:none;">
+          Select a place from the list to continue.
+        </p>
+      </div>
+      <button type="submit" id="submit-btn">Generate Chart</button>
+      <div id="status" class="status" style="display:none;"></div>
+      <div id="error" class="error" style="display:none;"></div>
+    </form>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<script>
+(function () {
+  const params = new URLSearchParams(window.location.search);
+  const API_BASE = params.get("api") || "http://localhost:8000";
+  const AYANAMSA = "LAHIRI";
+
+  const PLANET_ORDER = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"];
+  const PLANET_ABBR = {
+    Sun: "Su", Moon: "Mo", Mars: "Ma", Mercury: "Me", Jupiter: "Ju",
+    Venus: "Ve", Saturn: "Sa", Rahu: "Ra", Ketu: "Ke",
+  };
+  const SIGNS = [
+    "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
+    "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
+  ];
+  const DASHA_LEVELS = ["Mahadasha", "Antardasha", "Pratyantardasha", "Sookshma", "Prana"];
+
+  const form = document.getElementById("birth-form");
+  const submitBtn = document.getElementById("submit-btn");
+  const statusEl = document.getElementById("status");
+  const errorEl = document.getElementById("error");
+  const resultsEl = document.getElementById("results");
+  const placeInput = document.getElementById("place");
+  const suggestionsEl = document.getElementById("place-suggestions");
+  const placeHintEl = document.getElementById("place-hint");
+
+  function setStatus(text) {
+    if (!text) {
+      statusEl.style.display = "none";
+      statusEl.textContent = "";
+      return;
+    }
+    statusEl.style.display = "block";
+    statusEl.textContent = text;
+  }
+
+  function setError(text) {
+    if (!text) {
+      errorEl.style.display = "none";
+      errorEl.textContent = "";
+      return;
+    }
+    errorEl.style.display = "block";
+    errorEl.textContent = text;
+  }
+
+  let isLoading = false;
+
+  function updateSubmitState() {
+    submitBtn.disabled = isLoading || !selectedPlace;
+  }
+
+  function setLoading(loading) {
+    isLoading = loading;
+    Array.from(form.querySelectorAll("input")).forEach(i => i.disabled = loading);
+    updateSubmitState();
+  }
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, c => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+    }[c]));
+  }
+
+  async function extractErrorMessage(response) {
+    let body;
+    try {
+      body = await response.json();
+    } catch (e) {
+      return `Request failed (${response.status})`;
+    }
+    const detail = body && body.detail;
+    if (typeof detail === "string") return detail;
+    if (Array.isArray(detail)) {
+      return detail.map(d => `${(d.loc || []).join(".")}: ${d.msg}`).join("; ");
+    }
+    return `Request failed (${response.status})`;
+  }
+
+  function formatIsoDateTime(iso) {
+    if (!iso) return "-";
+    const [datePart, timePart] = iso.split("T");
+    return `${datePart} ${(timePart || "").slice(0, 5)}`;
+  }
+
+  function planetRows(planetsObj, order) {
+    return order.filter(p => p in planetsObj);
+  }
+
+  // ---------------------------------------------------------------------
+  // Place autocomplete -- selecting a dropdown result is the ONLY way to
+  // provide a place. This disambiguates same-named places in different
+  // regions/countries (e.g. "Delhi, India" vs "Delhi, Canada") and avoids
+  // false "not found" errors from typos, since the user always picks from
+  // real Nominatim matches rather than typing a raw query.
+  // ---------------------------------------------------------------------
+  let selectedPlace = null;   // {display_name, latitude, longitude} once picked from the dropdown
+  let debounceTimer = null;
+  let suggestionResults = [];
+
+  placeInput.addEventListener("input", () => {
+    selectedPlace = null;
+    updateSubmitState();
+    const q = placeInput.value.trim();
+    placeHintEl.style.display = q ? "block" : "none";
+    clearTimeout(debounceTimer);
+    if (q.length < 3) {
+      hideSuggestions();
+      return;
+    }
+    debounceTimer = setTimeout(() => fetchSuggestions(q), 400);
+  });
+
+  placeInput.addEventListener("blur", () => {
+    // Delay so a click on a suggestion registers before the list disappears.
+    setTimeout(hideSuggestions, 150);
+  });
+
+  async function fetchSuggestions(q) {
+    try {
+      const resp = await fetch(`${API_BASE}/places/search?q=${encodeURIComponent(q)}`);
+      if (!resp.ok) {
+        hideSuggestions();
+        return;
+      }
+      const results = await resp.json();
+      renderSuggestions(results);
+    } catch (err) {
+      hideSuggestions();
+    }
+  }
+
+  function renderSuggestions(results) {
+    suggestionResults = results;
+    if (!results.length) {
+      hideSuggestions();
+      return;
+    }
+    suggestionsEl.innerHTML = results.map((r, i) =>
+      `<li data-index="${i}">${escapeHtml(r.display_name)}</li>`
+    ).join("");
+    suggestionsEl.hidden = false;
+  }
+
+  function hideSuggestions() {
+    suggestionsEl.hidden = true;
+    suggestionsEl.innerHTML = "";
+  }
+
+  suggestionsEl.addEventListener("mousedown", (e) => {
+    // mousedown (not click) so this fires before the input's blur handler hides the list.
+    const li = e.target.closest("li");
+    if (!li) return;
+    const picked = suggestionResults[Number(li.dataset.index)];
+    selectedPlace = picked;
+    placeInput.value = picked.display_name;
+    placeHintEl.style.display = "none";
+    hideSuggestions();
+    updateSubmitState();
+  });
+
+  // ---------------------------------------------------------------------
+  // North Indian (diamond) divisional chart rendering
+  // ---------------------------------------------------------------------
+  const CHART_SIZE = 300;
+
+  // Fixed screen geometry: house 1 = top kite, then counter-clockwise
+  // (2/3 = top-left corner, 4 = left kite, 5/6 = bottom-left corner,
+  // 7 = bottom kite, 8/9 = bottom-right corner, 10 = right kite,
+  // 11/12 = top-right corner) -- the standard North Indian layout, where
+  // WHICH SIGN occupies each fixed position depends on the chart's Lagna.
+  const HOUSE_GEOMETRY = (() => {
+    const T = [150, 0], TR = [300, 0], R = [300, 150], BR = [300, 300];
+    const B = [150, 300], BL = [0, 300], L = [0, 150], TL = [0, 0];
+    const C = [150, 150];
+    const TLq = [75, 75], TRq = [225, 75], BRq = [225, 225], BLq = [75, 225];
+    const defs = [
+      { points: [T, TRq, C, TLq], outer: T },     // 1: top
+      { points: [TL, T, TLq], outer: TL },        // 2: top-left (upper)
+      { points: [TL, TLq, L], outer: TL },        // 3: top-left (lower)
+      { points: [L, TLq, C, BLq], outer: L },      // 4: left
+      { points: [BL, L, BLq], outer: BL },        // 5: bottom-left (upper)
+      { points: [BL, BLq, B], outer: BL },        // 6: bottom-left (lower)
+      { points: [B, BLq, C, BRq], outer: B },      // 7: bottom
+      { points: [BR, B, BRq], outer: BR },        // 8: bottom-right (lower)
+      { points: [BR, BRq, R], outer: BR },        // 9: bottom-right (upper)
+      { points: [R, BRq, C, TRq], outer: R },      // 10: right
+      { points: [TR, R, TRq], outer: TR },        // 11: top-right (lower)
+      { points: [TR, TRq, T], outer: TR },        // 12: top-right (upper)
+    ];
+    return defs.map(({ points, outer }) => {
+      const cx = points.reduce((s, p) => s + p[0], 0) / points.length;
+      const cy = points.reduce((s, p) => s + p[1], 0) / points.length;
+      const lerp = (t) => [outer[0] + (cx - outer[0]) * t, outer[1] + (cy - outer[1]) * t];
+      return { numberPos: lerp(0.35), contentPos: [cx, cy] };
+    });
+  })();
+
+  function degreeInSign(longitude) {
+    // Whole-degree display value; clamp 30 -> 29 so rounding never shows
+    // an out-of-range degree for a sign (valid range is 0-29).
+    return Math.min(29, Math.round(longitude % 30));
+  }
+
+  function buildPlanetsMeta(planetsD1) {
+    const meta = {};
+    planetRows(planetsD1, PLANET_ORDER).forEach(p => {
+      const d = planetsD1[p];
+      meta[p] = { degree: degreeInSign(d.longitude), retrograde: d.retrograde };
+    });
+    return meta;
+  }
+
+  function buildTransitsMeta(transits) {
+    const meta = {};
+    planetRows(transits, PLANET_ORDER).forEach(p => {
+      const t = transits[p];
+      meta[p] = { degree: degreeInSign(t.longitude), retrograde: t.retrograde };
+    });
+    return meta;
+  }
+
+  function transitSignMap(transits) {
+    const map = {};
+    planetRows(transits, PLANET_ORDER).forEach(p => { map[p] = transits[p].sign; });
+    return map;
+  }
+
+  function computeHouseAssignments(lagnaSign, planetSignMap) {
+    const lagnaIdx = SIGNS.indexOf(lagnaSign);
+    const houses = Array.from({ length: 12 }, () => []);
+    planetRows(planetSignMap, PLANET_ORDER).forEach(p => {
+      const signIdx = SIGNS.indexOf(planetSignMap[p]);
+      const houseNum = ((signIdx - lagnaIdx + 12) % 12) + 1;
+      houses[houseNum - 1].push(p);
+    });
+    return houses;
+  }
+
+  function renderNorthIndianChart(lagnaSign, planetSignMap, planetsMeta) {
+    const houses = computeHouseAssignments(lagnaSign, planetSignMap);
+    const lagnaIdx = SIGNS.indexOf(lagnaSign);
+    const s = CHART_SIZE;
+
+    const gridLines = `
+      <rect x="0" y="0" width="${s}" height="${s}" class="ni-border" />
+      <line x1="0" y1="0" x2="${s}" y2="${s}" class="ni-line" />
+      <line x1="${s}" y1="0" x2="0" y2="${s}" class="ni-line" />
+      <line x1="150" y1="0" x2="300" y2="150" class="ni-line" />
+      <line x1="300" y1="150" x2="150" y2="300" class="ni-line" />
+      <line x1="150" y1="300" x2="0" y2="150" class="ni-line" />
+      <line x1="0" y1="150" x2="150" y2="0" class="ni-line" />
+    `;
+
+    const lineHeight = 13;
+    const houseSvg = HOUSE_GEOMETRY.map((geom, i) => {
+      // Screen position i is fixed (house i+1 from this chart's Lagna), but
+      // the label shown is the ZODIAC SIGN NUMBER occupying that position
+      // (Aries=1 ... Pisces=12), not the house-from-Lagna count.
+      const signNumber = ((lagnaIdx + i) % 12) + 1;
+      const planets = houses[i];
+      const [nx, ny] = geom.numberPos;
+      const [cx, cy] = geom.contentPos;
+      const startY = cy - ((planets.length - 1) * lineHeight) / 2;
+      const planetLines = planets.map((p, idx) => {
+        const meta = planetsMeta[p] || { degree: 0, retrograde: false };
+        const retro = meta.retrograde ? "*" : "";
+        return `<text x="${cx}" y="${startY + idx * lineHeight}" class="ni-planet" text-anchor="middle">${PLANET_ABBR[p]}${retro} ${meta.degree}&deg;</text>`;
+      }).join("");
+      return `<text x="${nx}" y="${ny}" class="ni-housenum" text-anchor="middle">${signNumber}</text>${planetLines}`;
+    }).join("");
+
+    return `<svg viewBox="0 0 ${s} ${s}" class="ni-chart" role="img" aria-label="${escapeHtml(lagnaSign)} lagna North Indian chart">
+      ${gridLines}
+      ${houseSvg}
+    </svg>`;
+  }
+
+  function renderPlanetsD1(planetsD1) {
+    const rows = planetRows(planetsD1, PLANET_ORDER).map(p => {
+      const d = planetsD1[p];
+      const retro = d.retrograde ? '<span class="retro">R</span>' : "";
+      return `<tr>
+        <td>${p} ${retro}</td>
+        <td>${d.sign}</td>
+        <td>${d.longitude.toFixed(2)}&deg;</td>
+        <td>${d.nakshatra}</td>
+        <td>${d.pada}</td>
+      </tr>`;
+    }).join("");
+    return `
+      <div class="card">
+        <h2>D1 Planets</h2>
+        <table>
+          <thead><tr><th>Planet</th><th>Sign</th><th>Degree</th><th>Nakshatra</th><th>Pada</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function vargaSortKey(key) {
+    return parseInt(key.replace("D", ""), 10);
+  }
+
+  function renderDivisionalCharts(divisionalCharts, planetsMeta) {
+    const keys = Object.keys(divisionalCharts).sort((a, b) => vargaSortKey(a) - vargaSortKey(b));
+    const sections = keys.map(key => {
+      const chart = divisionalCharts[key];
+      const svg = renderNorthIndianChart(chart.lagna_sign, chart.planets, planetsMeta);
+      return `
+        <details>
+          <summary>${key} &mdash; ${chart.label}</summary>
+          <p class="muted">Lagna: ${chart.lagna_sign}</p>
+          <div class="ni-chart-wrap">${svg}</div>
+        </details>`;
+    }).join("");
+    return `
+      <div class="card">
+        <h2>Divisional Charts</h2>
+        ${sections}
+        <p class="muted ni-legend">* Retrograde</p>
+      </div>`;
+  }
+
+  function renderDasha(dasha) {
+    const rows = DASHA_LEVELS.map(level => {
+      const p = dasha.current[level];
+      if (!p) return "";
+      return `<tr>
+        <td>${level}</td>
+        <td>${p.lord}</td>
+        <td>${formatIsoDateTime(p.start)}</td>
+        <td>${formatIsoDateTime(p.end)}</td>
+      </tr>`;
+    }).join("");
+    return `
+      <div class="card">
+        <h2>Current Dasha Lineage</h2>
+        <p class="muted">As of ${formatIsoDateTime(dasha.current_lineage_as_of)}</p>
+        <table>
+          <thead><tr><th>Level</th><th>Lord</th><th>Start</th><th>End</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  }
+
+  function renderTransits(transits, natalLagnaSign, natalMoonSign) {
+    const rows = planetRows(transits, PLANET_ORDER).map(p => {
+      const t = transits[p];
+      const retro = t.retrograde ? '<span class="retro">R</span>' : "";
+      return `<tr>
+        <td>${p} ${retro}</td>
+        <td>${t.sign}</td>
+        <td>${t.house_from_moon}</td>
+        <td>${t.house_from_lagna}</td>
+      </tr>`;
+    }).join("");
+
+    const transitsMeta = buildTransitsMeta(transits);
+    const signMap = transitSignMap(transits);
+    const lagnaChartSvg = renderNorthIndianChart(natalLagnaSign, signMap, transitsMeta);
+    const moonChartSvg = renderNorthIndianChart(natalMoonSign, signMap, transitsMeta);
+
+    return `
+      <div class="card">
+        <h2>Current Transits (Gochar)</h2>
+        <table>
+          <thead><tr><th>Planet</th><th>Sign</th><th>House from Moon</th><th>House from Lagna</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <details>
+          <summary>Transits from Lagna</summary>
+          <p class="muted">House 1: ${natalLagnaSign} (natal Lagna)</p>
+          <div class="ni-chart-wrap">${lagnaChartSvg}</div>
+        </details>
+        <details>
+          <summary>Transits from Moon (Chandra Gochara)</summary>
+          <p class="muted">House 1: ${natalMoonSign} (natal Moon)</p>
+          <div class="ni-chart-wrap">${moonChartSvg}</div>
+        </details>
+        <p class="muted ni-legend">* Retrograde</p>
+      </div>`;
+  }
+
+  function renderResults(chart) {
+    const planetsMeta = buildPlanetsMeta(chart.planets_d1);
+    const lagnaCard = `
+      <div class="card">
+        <h2>${chart.name}</h2>
+        <p class="lagna-line">Lagna: <strong>${chart.lagna.sign}</strong> (${chart.lagna.degree.toFixed(2)}&deg;)</p>
+        <p class="muted">
+          Born ${chart.birth_details.date} ${chart.birth_details.time}
+          (UTC${chart.birth_details.tz_offset_hours >= 0 ? "+" : ""}${chart.birth_details.tz_offset_hours})
+          at ${chart.birth_details.latitude.toFixed(4)}, ${chart.birth_details.longitude.toFixed(4)}
+          &middot; Ayanamsa: ${chart.birth_details.ayanamsa}
+        </p>
+      </div>`;
+
+    resultsEl.innerHTML = lagnaCard
+      + renderPlanetsD1(chart.planets_d1)
+      + renderDivisionalCharts(chart.divisional_charts, planetsMeta)
+      + renderDasha(chart.dasha)
+      + renderTransits(chart.transits_gochar, chart.lagna.sign, chart.planets_d1.Moon.sign);
+
+    resultsEl.style.display = "block";
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    setError(null);
+    resultsEl.style.display = "none";
+    resultsEl.innerHTML = "";
+
+    const name = document.getElementById("name").value.trim();
+    const dob = document.getElementById("dob").value;   // YYYY-MM-DD
+    const tob = document.getElementById("tob").value;   // HH:MM
+
+    if (!name || !dob || !tob) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    if (!selectedPlace) {
+      setError("Please select a place from the dropdown list.");
+      return;
+    }
+
+    const [year, month, day] = dob.split("-").map(Number);
+    const [hour, minute] = tob.split(":").map(Number);
+
+    setLoading(true);
+
+    try {
+      setStatus("Resolving timezone…");
+      const tzResp = await fetch(`${API_BASE}/resolve-timezone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          latitude: selectedPlace.latitude, longitude: selectedPlace.longitude,
+          year, month, day, hour, minute,
+        }),
+      });
+      if (!tzResp.ok) {
+        throw new Error(`Could not resolve timezone: ${await extractErrorMessage(tzResp)}`);
+      }
+      const tz = await tzResp.json();
+
+      setStatus("Building chart…");
+      const chartResp = await fetch(`${API_BASE}/chart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name, year, month, day, hour, minute, second: 0,
+          latitude: selectedPlace.latitude, longitude: selectedPlace.longitude,
+          tz_offset_hours: tz.tz_offset_hours, ayanamsa: AYANAMSA,
+        }),
+      });
+      if (!chartResp.ok) {
+        throw new Error(`Could not build chart: ${await extractErrorMessage(chartResp)}`);
+      }
+      const chart = await chartResp.json();
+
+      setStatus(null);
+      renderResults(chart);
+    } catch (err) {
+      setError(err.message || "Something went wrong. Please check your inputs and try again.");
+    } finally {
+      setLoading(false);
+      setStatus(null);
+    }
+  });
+
+  updateSubmitState();   // start disabled: no place selected yet
+})();
+</script>
+</body>
+</html>
