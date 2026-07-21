@@ -60,9 +60,17 @@ With the API running (`uvicorn api:app --reload --port 8000`), either:
   # then open http://localhost:5500
   ```
 
-By default the frontend calls the API at `http://localhost:8000`. To point it
-at a different host/port, add `?api=http://your-host:port` to the frontend's
-URL, e.g. `http://localhost:5500?api=http://localhost:9000`.
+The frontend picks its API base URL in this order:
+
+1. `?api=http://your-host:port` in the frontend's own URL, if present (e.g.
+   `http://localhost:5500?api=http://localhost:9000`) — always wins.
+2. Otherwise, if the page itself is being served from `localhost`/`127.0.0.1`
+   (or opened as a local `file://` page), it defaults to
+   `http://localhost:8000`.
+3. Otherwise (i.e. the frontend is deployed somewhere), it defaults to
+   `https://REPLACE-WITH-YOUR-RENDER-BACKEND-URL.onrender.com` — a placeholder
+   you must edit in `frontend/index.html` once you have your actual Render
+   backend URL (see **Deployment** below).
 
 ## Geocoding: Place of Birth → latitude/longitude/tz_offset_hours
 
@@ -126,6 +134,67 @@ All Nominatim-backed lookups (`/geocode`, `/places/search`) share the same
    the ones you asked for (all vargas through D60, Vimshottari through Prana,
    Gochar) are done. These others follow the same general pattern (reuse
    `ephemeris.py`'s longitudes) if you want Claude Code to extend the engine.
+
+## Deployment
+
+`render.yaml` in the project root defines two [Render](https://render.com) free-tier
+services: a Python web service for `api.py` (`vedic-astro-api`) and a static
+site for `frontend/` (`vedic-astro-frontend`).
+
+1. **Push this project to a GitHub repo.**
+   ```bash
+   git init                      # if not already a git repo
+   git add .
+   git commit -m "Initial commit"
+   gh repo create vedic-astro-app --source=. --public --push
+   # or manually: create an empty repo on GitHub, then
+   #   git remote add origin https://github.com/<you>/vedic-astro-app.git
+   #   git push -u origin main
+   ```
+
+2. **Connect the repo to Render.**
+   - Go to the [Render dashboard](https://dashboard.render.com) → **New** →
+     **Blueprint**.
+   - Pick the GitHub repo you just pushed. Render detects `render.yaml` and
+     proposes both services (`vedic-astro-api` and `vedic-astro-frontend`).
+   - Click **Apply** to create and deploy both. The first deploy takes a few
+     minutes (installing `pyswisseph` etc.). Free-tier web services spin down
+     after inactivity, so the API's first request after idling will be slow
+     (~30-60s cold start) — this is normal on Render's free plan, not a bug.
+   - If you'd rather not use the Blueprint flow, create the two services by
+     hand in the dashboard instead, using the same build/start commands from
+     `render.yaml`.
+
+3. **Get your backend's live URL.** Once `vedic-astro-api` finishes deploying,
+   Render shows its URL, something like
+   `https://vedic-astro-api-xxxx.onrender.com`. Open it in a browser and
+   confirm `/health` returns `{"status": "ok"}`.
+
+4. **Point the frontend at that URL.** Edit `frontend/index.html` and replace
+   the placeholder:
+   ```js
+   const DEFAULT_API_BASE = isLocalHost
+     ? "http://localhost:8000"
+     : "https://REPLACE-WITH-YOUR-RENDER-BACKEND-URL.onrender.com";   // <- change this
+   ```
+   with your actual backend URL from step 3, then commit and push — Render
+   auto-redeploys the static site on every push to the connected branch.
+   (Alternatively, skip editing the file and just always append
+   `?api=https://your-backend-url.onrender.com` to the frontend URL — the
+   query param overrides the default either way, which is handy for testing
+   before you commit the change.)
+
+5. **Verify.** Open the deployed frontend URL (shown on the
+   `vedic-astro-frontend` service page), fill in the form, and confirm a
+   chart renders — this exercises the deployed frontend calling the deployed
+   backend end-to-end, including CORS (see below) and Nominatim geocoding.
+
+**CORS**: `api.py` already sets `allow_origins=["*"]`, so the deployed
+frontend (or any origin) can call the deployed backend without further
+changes — no code edits are needed for this step. That's safe here because
+the API takes no credentials/cookies (`allow_credentials` is left at its
+default `False`); if you later add auth, tighten this to
+`allow_origins=["https://your-frontend-url.onrender.com"]` instead of `"*"`.
 
 ## Accuracy notes
 

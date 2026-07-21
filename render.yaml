@@ -1,0 +1,15 @@
+services:
+  # FastAPI backend -- app/ + api.py
+  - type: web
+    name: vedic-astro-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+
+  # Static frontend -- frontend/index.html, no build step
+  - type: web
+    name: vedic-astro-frontend
+    env: static
+    plan: free
+    staticPublishPath: frontend

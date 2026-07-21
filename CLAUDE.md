@@ -33,6 +33,13 @@ curl -X POST http://localhost:8000/chart -H "Content-Type: application/json" -d 
 
 There is no test suite yet.
 
+`render.yaml` defines two Render free-tier services (`vedic-astro-api` for `api.py`,
+`vedic-astro-frontend` for `frontend/`) — see the README's **Deployment** section for
+the push/connect/deploy steps. The frontend's API base URL (`frontend/index.html`,
+`DEFAULT_API_BASE`) auto-detects localhost vs. deployed and falls back to a
+`REPLACE-WITH-YOUR-RENDER-BACKEND-URL` placeholder that needs a one-time manual edit
+once the backend's real Render URL is known; a `?api=` query param always overrides it.
+
 ## Architecture
 
 Data flows in one direction through four independent modules, orchestrated by a single
@@ -105,7 +112,44 @@ function:
   `house_from_lagna`/`house_from_moon` numbers exactly, since both use the identical
   `((signIdx - referenceIdx) % 12) + 1` formula. The underlying data table for D1
   planets and transits is kept alongside the diamond charts as a plain-text
-  cross-reference.
+  cross-reference. The Current Dasha Lineage card is a one-table-at-a-time
+  drill-down (`#dasha-nav`, state in the `dashaState` closure var). Row highlighting at
+  any depth does NOT read `chart.dasha.current` (see below); only the top-level
+  Mahadasha sequence comes from the API (`dasha.mahadasha_sequence` — it has a
+  "birth-balance" first period the
+  pure formula can't reproduce); every deeper level (Antardasha through Prana) is
+  computed client-side via `computeSubPeriods()`, which mirrors `app/dasha.py`'s
+  `_sub_periods()` exactly (9 sub-periods cycling `DASHA_ORDER` from the parent's own
+  lord, each getting `full_years/120` of the parent's duration) — so no extra API call
+  is needed to drill down. Highlighting the currently-active row at any depth is a
+  containment check (`state.now >= p.start && state.now < p.end`) against
+  `dasha.current_lineage_as_of`, rather than an exact-match compare against
+  `chart.dasha.current[level]` — this sidesteps float-precision drift between the
+  Python and JS reimplementations of the same fractional math, and naturally shows no
+  highlight if the user drills into an off-path branch. `dashaState` tracks two things
+  separately: `path` (the deepest sequence of periods ever drilled into — only grows,
+  via a row click) and `viewDepth` (which level's table is on screen right now — changed
+  by a tab click, and can be shallower than `path.length` without discarding the deeper
+  path). Navigation is a row of 5 always-visible `DASHA_LEVEL_LABELS` tabs
+  (`renderDashaTabs()`: "Maha Dasha", "Antar Dasha", "Pratyantar Dasha", "Sookshma
+  Dasha", "Pran Dasha") — tab `level` is enabled once `level <= path.length` (i.e. once
+  the user has actually drilled that deep) and marked active when `level === viewDepth`;
+  clicking an enabled tab only changes `viewDepth`, so jumping back to an
+  already-visited level re-shows it exactly as left (same rows, same highlighted
+  "current" row, since that highlight is purely time-based and nothing about the
+  underlying `path` changed). Clicking a row while viewing depth `d` branches from there:
+  `path = path.slice(0, d).concat([clickedPeriod])`, `viewDepth = d + 1` — this discards
+  any stale deeper path past the branch point, which is why tabs deeper than the new
+  `path.length` go back to disabled. Below the tabs, `renderDashaSummary()` prints a
+  fixed 5-line "here's where you are right now" block reading directly from
+  `dasha.current` (stashed on `dashaState.current` in `buildDashaState()`) — one line
+  per level, unaffected by `path`/`viewDepth` navigation, since it's the one place in
+  the Dasha card that intentionally *does* trust the API's `chart.dasha.current` values
+  rather than the client-side time-containment recomputation used for row highlighting.
+  All dates anywhere in the frontend (birth summary, Dasha summary block, Dasha
+  Start/End columns) render as `DD-Mon-YYYY` via the shared `MONTH_ABBR` array
+  (`formatBirthDate()` for the birth-summary `YYYY-MM-DD` string, `formatDashaDate()`
+  for the UTC-anchored `Date` objects used in Dasha rows/summary).
 
 ## Known gaps (intentional, not yet wired up)
 

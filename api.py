@@ -37,8 +37,14 @@ from app.chart_builder import build_full_chart
 
 app = FastAPI(title="Vedic Astrology Engine")
 
-# Allow the static frontend (opened as a file:// page, or served from any
-# other origin/port) to call this API directly from the browser.
+# Allow the static frontend to call this API directly from the browser --
+# from a file:// page, localhost during dev, or a deployed origin (e.g. the
+# Render static site URL) once this API is hosted. "*" works everywhere
+# because no cookies/auth headers are involved (allow_credentials is left at
+# its default False, which is what makes a wildcard origin valid at all --
+# browsers reject "*" together with credentialed requests). If you want to
+# lock this down once you know your deployed frontend's exact URL, replace
+# allow_origins=["*"] with allow_origins=["https://your-frontend.onrender.com"].
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

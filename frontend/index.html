@@ -19,6 +19,8 @@
     --retro: #b8452e;
     --chart-line: #b8a98f;
     --chart-border: #5c3720;
+    --dasha-current: #1a5fb4;
+    --dasha-current-bg: #e9f1fb;
   }
   * { box-sizing: border-box; }
   body {
@@ -33,9 +35,12 @@
     margin: 0 auto;
     padding: 32px 20px 80px;
   }
-  h1 {
-    font-size: 1.6rem;
-    margin-bottom: 4px;
+  .header-logo {
+    display: block;
+    max-width: 560px;
+    width: 100%;
+    height: auto;
+    margin: 0 auto 4px;
   }
   .subtitle {
     color: var(--muted);
@@ -244,11 +249,69 @@
     margin-top: 12px;
     text-align: right;
   }
+
+  /* Dasha drill-down navigation */
+  .dasha-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  button.dasha-tab {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--accent-dark);
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  button.dasha-tab:hover:not(:disabled) {
+    background: #f3ede4;
+  }
+  button.dasha-tab.dasha-tab-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  button.dasha-tab:disabled {
+    color: var(--muted);
+    border-color: var(--border);
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .dasha-summary {
+    margin-bottom: 16px;
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+  .dasha-summary-line {
+    margin: 0;
+    color: var(--text);
+  }
+  .dasha-summary-planet {
+    color: var(--dasha-current);
+    font-weight: 700;
+  }
+  tr.dasha-clickable {
+    cursor: pointer;
+  }
+  tr.dasha-clickable:hover td {
+    background: #f6f1e9;
+  }
+  tr.dasha-current td {
+    font-weight: 700;
+    color: var(--dasha-current);
+    background: var(--dasha-current-bg);
+  }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>Vedic Astrology Chart</h1>
+  <img src="header-logo.png" alt="Vedic Astrology Chart" class="header-logo">
   <p class="subtitle">Enter birth details to generate a full sidereal chart.</p>
 
   <div class="card">
@@ -259,7 +322,7 @@
       </div>
       <div class="row">
         <div class="field">
-          <label for="dob">Date of Birth (dd/mm/yyyy)</label>
+          <label for="dob">Date of Birth (mm/dd/yyyy)</label>
           <input type="date" id="dob" required>
         </div>
         <div class="field">
@@ -287,7 +350,13 @@
 <script>
 (function () {
   const params = new URLSearchParams(window.location.search);
-  const API_BASE = params.get("api") || "http://localhost:8000";
+  // "" covers file:// pages (window.location.hostname is empty there), which
+  // should behave like local dev too.
+  const isLocalHost = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
+  const DEFAULT_API_BASE = isLocalHost
+    ? "http://localhost:8000"
+    : "https://REPLACE-WITH-YOUR-RENDER-BACKEND-URL.onrender.com";
+  const API_BASE = params.get("api") || DEFAULT_API_BASE;
   const AYANAMSA = "LAHIRI";
 
   const PLANET_ORDER = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"];
@@ -299,7 +368,26 @@
     "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
     "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces",
   ];
-  const DASHA_LEVELS = ["Mahadasha", "Antardasha", "Pratyantardasha", "Sookshma", "Prana"];
+  const MONTH_ABBR = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  // Drill-down level labels, indexed by depth (0 = top / Mahadasha table).
+  const DASHA_LEVEL_LABELS = ["Maha Dasha", "Antar Dasha", "Pratyantar Dasha", "Sookshma Dasha", "Pran Dasha"];
+  // Keys used in the /chart response's dasha.current object, in the same
+  // order as DASHA_LEVEL_LABELS -- see app/dasha.py's LEVEL_NAMES.
+  const DASHA_CURRENT_KEYS = ["Mahadasha", "Antardasha", "Pratyantardasha", "Sookshma", "Prana"];
+  // Same fixed Vimshottari order + years used server-side (app/dasha.py) --
+  // replicated here so drilling into any level's sub-periods (Antardasha
+  // through Prana) needs no extra API round-trip; only the top-level
+  // Mahadasha sequence (which has a "birth-balance" first period the pure
+  // formula can't reproduce) comes from the /chart response.
+  const DASHA_ORDER = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
+  const DASHA_FULL_YEARS = {
+    Ketu: 7, Venus: 20, Sun: 6, Moon: 10, Mars: 7,
+    Rahu: 18, Jupiter: 16, Saturn: 19, Mercury: 17,
+  };
+  const DASHA_TOTAL_YEARS = 120;
 
   const form = document.getElementById("birth-form");
   const submitBtn = document.getElementById("submit-btn");
@@ -363,14 +451,14 @@
     return `Request failed (${response.status})`;
   }
 
-  function formatIsoDateTime(iso) {
-    if (!iso) return "-";
-    const [datePart, timePart] = iso.split("T");
-    return `${datePart} ${(timePart || "").slice(0, 5)}`;
-  }
-
   function planetRows(planetsObj, order) {
     return order.filter(p => p in planetsObj);
+  }
+
+  function formatBirthDate(isoDateStr) {
+    // "YYYY-MM-DD" -> "DD-Mon-YYYY", e.g. "17-Jul-2026"
+    const [y, m, d] = isoDateStr.split("-").map(Number);
+    return `${String(d).padStart(2, "0")}-${MONTH_ABBR[m - 1]}-${y}`;
   }
 
   // ---------------------------------------------------------------------
@@ -608,26 +696,164 @@
       </div>`;
   }
 
-  function renderDasha(dasha) {
-    const rows = DASHA_LEVELS.map(level => {
-      const p = dasha.current[level];
-      if (!p) return "";
-      return `<tr>
-        <td>${level}</td>
+  // ---------------------------------------------------------------------
+  // Dasha drill-down navigation: one table at a time, Main Dasha (Mahadasha)
+  // down through Antar/Pratyantar/Sookshma/Prana, click a row to go deeper.
+  // ---------------------------------------------------------------------
+  let dashaState = null;   // { mahadashaSequence, now, path } for the currently rendered chart
+
+  function nextDashaLord(lord) {
+    const i = DASHA_ORDER.indexOf(lord);
+    return DASHA_ORDER[(i + 1) % DASHA_ORDER.length];
+  }
+
+  function parseNaiveIso(iso) {
+    // "YYYY-MM-DDTHH:MM:SS[.ffffff]" (no timezone) -> a Date anchored in UTC,
+    // so later ms-arithmetic reproduces Python's naive-datetime + timedelta
+    // math exactly, with no local-timezone/DST interference.
+    const [datePart, timePart] = iso.split("T");
+    const [y, mo, d] = datePart.split("-").map(Number);
+    const [h, mi, s] = (timePart || "00:00:00").split(":").map(Number);
+    return new Date(Date.UTC(y, mo - 1, d, h, mi, Math.floor(s || 0)));
+  }
+
+  function formatDashaDate(date) {
+    const pad = n => String(n).padStart(2, "0");
+    return `${pad(date.getUTCDate())}-${MONTH_ABBR[date.getUTCMonth()]}-${date.getUTCFullYear()} `
+      + `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+  }
+
+  function computeSubPeriods(parentLord, startDate, endDate) {
+    // Mirrors app/dasha.py's _sub_periods(): 9 sub-periods cycling through
+    // DASHA_ORDER starting from the parent's own lord, each getting
+    // (lord's full years / 120) of the parent's total duration.
+    const durationMs = endDate.getTime() - startDate.getTime();
+    const periods = [];
+    let cursor = startDate;
+    let lord = parentLord;
+    for (let i = 0; i < DASHA_ORDER.length; i++) {
+      const frac = DASHA_FULL_YEARS[lord] / DASHA_TOTAL_YEARS;
+      const end = new Date(cursor.getTime() + durationMs * frac);
+      periods.push({ lord, start: cursor, end });
+      cursor = end;
+      lord = nextDashaLord(lord);
+    }
+    return periods;
+  }
+
+  function buildDashaState(dasha) {
+    const mahadashaSequence = dasha.mahadasha_sequence.map(p => ({
+      lord: p.lord,
+      start: parseNaiveIso(p.start),
+      end: parseNaiveIso(p.end),
+    }));
+    // `path` is the deepest sequence of periods drilled into so far (grows
+    // only on a row click); `viewDepth` is which level's table is currently
+    // on screen (changed by tab clicks) and can be shallower than
+    // path.length without discarding the deeper path -- that's what lets a
+    // tab click jump back to an already-drilled level and still see it
+    // exactly as left (e.g. the previously-selected/current row still
+    // highlighted).
+    return {
+      mahadashaSequence,
+      now: parseNaiveIso(dasha.current_lineage_as_of),
+      current: dasha.current,   // raw {Mahadasha: {lord, start, end}, ...} for the fixed summary block
+      path: [],
+      viewDepth: 0,
+    };
+  }
+
+  function renderDashaSummary(current) {
+    const lines = DASHA_CURRENT_KEYS.map((key, i) => {
+      const period = current[key];
+      if (!period) return "";
+      const start = formatDashaDate(parseNaiveIso(period.start));
+      const end = formatDashaDate(parseNaiveIso(period.end));
+      return `<p class="dasha-summary-line">${DASHA_LEVEL_LABELS[i]} - `
+        + `<span class="dasha-summary-planet">${period.lord}</span>: ${start} to ${end}</p>`;
+    }).join("");
+    return `<div class="dasha-summary">${lines}</div>`;
+  }
+
+  function dashaRowsForDepth(state, depth) {
+    if (depth === 0) return state.mahadashaSequence;
+    const parent = state.path[depth - 1];
+    return computeSubPeriods(parent.lord, parent.start, parent.end);
+  }
+
+  function renderDashaTabs(state) {
+    return DASHA_LEVEL_LABELS.map((label, level) => {
+      const enabled = level <= state.path.length;
+      const active = level === state.viewDepth;
+      const classes = ["dasha-tab"];
+      if (active) classes.push("dasha-tab-active");
+      const attrs = enabled ? `data-action="dasha-tab" data-level="${level}"` : "disabled";
+      return `<button type="button" class="${classes.join(" ")}" ${attrs}>${label}</button>`;
+    }).join("");
+  }
+
+  function renderDashaTable(state) {
+    const depth = state.viewDepth;
+    const rows = dashaRowsForDepth(state, depth);
+    const isDeepest = depth === DASHA_LEVEL_LABELS.length - 1;
+
+    const rowsHtml = rows.map((p, idx) => {
+      const isCurrent = state.now >= p.start && state.now < p.end;
+      const classes = ["dasha-row"];
+      if (isCurrent) classes.push("dasha-current");
+      if (!isDeepest) classes.push("dasha-clickable");
+      const attrs = isDeepest ? "" : `data-action="dasha-drill" data-index="${idx}"`;
+      return `<tr class="${classes.join(" ")}" ${attrs}>
         <td>${p.lord}</td>
-        <td>${formatIsoDateTime(p.start)}</td>
-        <td>${formatIsoDateTime(p.end)}</td>
+        <td>${formatDashaDate(p.start)}</td>
+        <td>${formatDashaDate(p.end)}</td>
       </tr>`;
     }).join("");
+
+    return `
+      <div class="dasha-tabs">${renderDashaTabs(state)}</div>
+      ${renderDashaSummary(state.current)}
+      <table>
+        <thead><tr><th>Planet</th><th>Start</th><th>End</th></tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>`;
+  }
+
+  function handleDashaNavClick(e) {
+    const container = e.currentTarget;
+    const tab = e.target.closest('[data-action="dasha-tab"]');
+    if (tab) {
+      dashaState.viewDepth = Number(tab.dataset.level);
+      container.innerHTML = renderDashaTable(dashaState);
+      return;
+    }
+    const row = e.target.closest('[data-action="dasha-drill"]');
+    if (row) {
+      const idx = Number(row.dataset.index);
+      const depth = dashaState.viewDepth;
+      const clicked = dashaRowsForDepth(dashaState, depth)[idx];
+      // Drilling from any view depth branches off from there -- discard
+      // whatever deeper path existed past this point (it belonged to a
+      // different branch) and replace it with the newly selected period.
+      dashaState.path = dashaState.path.slice(0, depth).concat([clicked]);
+      dashaState.viewDepth = depth + 1;
+      container.innerHTML = renderDashaTable(dashaState);
+    }
+  }
+
+  function renderDashaCardShell() {
     return `
       <div class="card">
         <h2>Current Dasha Lineage</h2>
-        <p class="muted">As of ${formatIsoDateTime(dasha.current_lineage_as_of)}</p>
-        <table>
-          <thead><tr><th>Level</th><th>Lord</th><th>Start</th><th>End</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
+        <div id="dasha-nav"></div>
       </div>`;
+  }
+
+  function initDashaNav(dasha) {
+    dashaState = buildDashaState(dasha);
+    const container = document.getElementById("dasha-nav");
+    container.innerHTML = renderDashaTable(dashaState);
+    container.addEventListener("click", handleDashaNavClick);
   }
 
   function renderTransits(transits, natalLagnaSign, natalMoonSign) {
@@ -675,7 +901,7 @@
         <h2>${chart.name}</h2>
         <p class="lagna-line">Lagna: <strong>${chart.lagna.sign}</strong> (${chart.lagna.degree.toFixed(2)}&deg;)</p>
         <p class="muted">
-          Born ${chart.birth_details.date} ${chart.birth_details.time}
+          Born ${formatBirthDate(chart.birth_details.date)} ${chart.birth_details.time}
           (UTC${chart.birth_details.tz_offset_hours >= 0 ? "+" : ""}${chart.birth_details.tz_offset_hours})
           at ${chart.birth_details.latitude.toFixed(4)}, ${chart.birth_details.longitude.toFixed(4)}
           &middot; Ayanamsa: ${chart.birth_details.ayanamsa}
@@ -685,10 +911,11 @@
     resultsEl.innerHTML = lagnaCard
       + renderPlanetsD1(chart.planets_d1)
       + renderDivisionalCharts(chart.divisional_charts, planetsMeta)
-      + renderDasha(chart.dasha)
+      + renderDashaCardShell()
       + renderTransits(chart.transits_gochar, chart.lagna.sign, chart.planets_d1.Moon.sign);
 
     resultsEl.style.display = "block";
+    initDashaNav(chart.dasha);
   }
 
   form.addEventListener("submit", async (e) => {
