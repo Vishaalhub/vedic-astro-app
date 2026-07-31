@@ -5,3 +5,5 @@ fastapi
 uvicorn
 pydantic
 requests
+anthropic>=0.40.0
+stripe>=10.0.0

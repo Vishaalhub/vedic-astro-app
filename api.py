@@ -21,19 +21,22 @@ see its docstring below -- and feed its response straight into the /chart
 request above.
 """
 
+import os
 import threading
 import time
 from datetime import datetime
-from typing import Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import pytz
 import requests
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from timezonefinder import TimezoneFinder
 
 from app.chart_builder import build_full_chart
+from app import credits as credits_mod
+from app.interpret import interpret_chart
 
 app = FastAPI(title="Vedic Astrology Engine")
 
@@ -219,3 +222,180 @@ def chart(req: BirthRequest):
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Interpretation: chart JSON + question -> Claude-generated reading.
+# Requires a valid credit code (one credit consumed per successful call).
+# ---------------------------------------------------------------------------
+
+class InterpretRequest(BaseModel):
+    chart: Dict[str, Any]
+    question: str
+    primary_system: Optional[str] = None
+    credit_code: str  # required — no free calls from the paid endpoint
+
+
+@app.post("/interpret")
+def interpret(req: InterpretRequest):
+    q = (req.question or "").strip()
+    if not q:
+        raise HTTPException(status_code=422, detail="question is required")
+    if len(q) > 1000:
+        raise HTTPException(status_code=422, detail="question is too long (max 1000 chars)")
+    if not req.chart:
+        raise HTTPException(status_code=422, detail="chart is required")
+
+    # Reserve one credit BEFORE spending an LLM call, so a paid request never
+    # goes uncharged and a failed LLM call never silently eats a credit
+    # (see refund path below).
+    try:
+        remaining = credits_mod.redeem_one(req.credit_code)
+    except PermissionError as e:
+        raise HTTPException(status_code=402, detail=str(e))
+
+    try:
+        result = interpret_chart(req.chart, q, req.primary_system)
+    except RuntimeError as e:
+        # Server-side config issue (missing API key) — refund the credit so
+        # the user isn't charged for our misconfiguration.
+        _refund_credit(req.credit_code)
+        raise HTTPException(status_code=503, detail=str(e))
+    except Exception as e:
+        _refund_credit(req.credit_code)
+        raise HTTPException(status_code=502, detail=f"Interpretation failed: {e}")
+
+    result["credits_remaining"] = remaining
+    return result
+
+
+def _refund_credit(code: str) -> None:
+    """Add one credit back to a code — used when we charged before an LLM failure."""
+    import sqlite3
+    with credits_mod._db() as conn:  # reuse the same lock
+        try:
+            conn.execute(
+                "UPDATE credit_codes SET credits_remaining = credits_remaining + 1 WHERE code = ?",
+                (code.upper().strip(),),
+            )
+        except sqlite3.Error:
+            pass
+
+
+# ---------------------------------------------------------------------------
+# Credits: pack list, code balance check.
+# ---------------------------------------------------------------------------
+
+@app.get("/credits/packs")
+def credit_packs():
+    return {"packs": credits_mod.all_packs(), "currency": credits_mod.CURRENCY}
+
+
+@app.get("/credits/balance")
+def credit_balance(code: str = Query(..., min_length=1)):
+    remaining = credits_mod.check_credits(code)
+    if remaining is None:
+        raise HTTPException(status_code=404, detail="Invalid credit code.")
+    return {"credits_remaining": remaining}
+
+
+# ---------------------------------------------------------------------------
+# Stripe: Checkout Session creation + webhook that mints a credit code.
+# STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET must be set on the server.
+# STRIPE_SUCCESS_URL / STRIPE_CANCEL_URL point back to the frontend.
+# ---------------------------------------------------------------------------
+
+class CheckoutRequest(BaseModel):
+    pack_id: str  # "starter" | "regular" | "deep_dive"
+
+
+@app.post("/stripe/checkout")
+def stripe_checkout(req: CheckoutRequest):
+    # Validate user input BEFORE checking server config, so a client's bad
+    # request produces a 422 (client's problem to fix) rather than a 503 that
+    # implies a server outage.
+    try:
+        pack = credits_mod.pack_by_id(req.pack_id)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    import stripe
+    stripe_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not stripe_key:
+        raise HTTPException(status_code=503, detail="Stripe is not configured on the server.")
+    stripe.api_key = stripe_key
+
+    frontend_base = os.environ.get("FRONTEND_BASE_URL", "https://vishaalvedic-astro-app.onrender.com")
+    success_url = f"{frontend_base}/?checkout=success&session_id={{CHECKOUT_SESSION_ID}}"
+    cancel_url = f"{frontend_base}/?checkout=cancelled"
+
+    session = stripe.checkout.Session.create(
+        mode="payment",
+        payment_method_types=["card"],
+        line_items=[{
+            "price_data": {
+                "currency": pack["currency"],
+                "unit_amount": pack["amount"],
+                "product_data": {"name": pack["label"]},
+            },
+            "quantity": 1,
+        }],
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={"pack_id": pack["id"], "credits": str(pack["credits"])},
+    )
+    return {"checkout_url": session.url, "session_id": session.id}
+
+
+@app.post("/stripe/webhook")
+async def stripe_webhook(request: Request, stripe_signature: str = Header(None)):
+    """
+    Stripe -> our server: on successful checkout, mint a credit code and store
+    the mapping. Signature is verified against STRIPE_WEBHOOK_SECRET.
+    """
+    import stripe
+    stripe_key = os.environ.get("STRIPE_SECRET_KEY")
+    webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET")
+    if not (stripe_key and webhook_secret):
+        raise HTTPException(status_code=503, detail="Stripe webhook not configured.")
+    stripe.api_key = stripe_key
+
+    payload = await request.body()
+    try:
+        event = stripe.Webhook.construct_event(payload, stripe_signature, webhook_secret)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Webhook signature verification failed: {e}")
+
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        session_id = session.get("id")
+        if session_id and credits_mod.session_id_already_processed(session_id):
+            return {"ok": True, "duplicate": True}
+
+        metadata = session.get("metadata") or {}
+        credits = int(metadata.get("credits", 0))
+        if credits <= 0:
+            raise HTTPException(status_code=400, detail="Session has no credits metadata.")
+        code = credits_mod.mint_code(credits, stripe_session_id=session_id)
+        return {"ok": True, "code": code, "credits": credits}
+
+    return {"ok": True, "ignored": event["type"]}
+
+
+@app.get("/stripe/redeem")
+def stripe_redeem(session_id: str = Query(..., min_length=1)):
+    """
+    After Stripe redirects the buyer back to the frontend with ?session_id=...,
+    the frontend calls this to fetch the credit code that was minted for that
+    session. Reads from the DB — no Stripe API roundtrip.
+    """
+    import sqlite3
+    with credits_mod._db() as conn:
+        row = conn.execute(
+            "SELECT code, credits_remaining FROM credit_codes WHERE stripe_session_id = ? LIMIT 1",
+            (session_id,),
+        ).fetchone()
+    if row is None:
+        # Webhook may not have arrived yet — frontend should poll for a few seconds.
+        raise HTTPException(status_code=404, detail="No credit code minted for this session yet.")
+    return {"code": row[0], "credits_remaining": int(row[1])}

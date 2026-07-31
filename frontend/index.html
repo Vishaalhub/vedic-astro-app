@@ -65,7 +65,7 @@
     font-size: 0.85rem;
     margin-bottom: 6px;
   }
-  input[type="text"], input[type="date"], input[type="time"] {
+  input[type="text"], input[type="time"] {
     width: 100%;
     padding: 9px 10px;
     border: 1px solid var(--border);
@@ -224,6 +224,14 @@
     margin: 6px 0 0;
     font-size: 0.78rem;
   }
+  .field-error {
+    margin: 6px 0 0;
+    font-size: 0.78rem;
+    color: var(--error-text);
+  }
+  input[aria-invalid="true"] {
+    border-color: var(--error-border);
+  }
 
   /* North Indian diamond chart */
   .ni-chart-wrap {
@@ -320,6 +328,59 @@
     color: var(--dasha-current);
     background: var(--dasha-current-bg);
   }
+  /* Ask-a-Question & credits */
+  .ask-card textarea {
+    width: 100%; min-height: 90px; padding: 10px;
+    border: 1px solid var(--border); border-radius: 5px;
+    font-family: inherit; font-size: 0.95rem; color: var(--text);
+    background: #fff; resize: vertical;
+  }
+  .ask-card .row-inline {
+    display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; align-items: center;
+  }
+  .ask-card select, .ask-card input[type="text"] {
+    padding: 9px 10px; border: 1px solid var(--border); border-radius: 5px;
+    font-size: 0.95rem; background: #fff; color: var(--text);
+  }
+  .ask-card .credit-line {
+    font-size: 0.85rem; color: var(--muted); margin-left: auto;
+  }
+  .ask-card .credit-line strong { color: var(--accent-dark); }
+  .interpretation {
+    margin-top: 18px; padding: 16px 18px;
+    background: #fbf8f2; border: 1px solid var(--border); border-radius: 6px;
+    white-space: pre-wrap; font-size: 0.95rem; line-height: 1.55;
+  }
+  .packs-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-top: 14px;
+  }
+  .pack {
+    border: 1px solid var(--border); border-radius: 6px; padding: 14px;
+    background: #fff; text-align: center;
+  }
+  .pack h4 { margin: 0 0 6px; font-size: 0.95rem; color: var(--accent-dark); }
+  .pack .price { font-size: 1.35rem; font-weight: 700; margin: 4px 0 8px; }
+  .pack button { width: 100%; padding: 8px 12px; font-size: 0.9rem; }
+  .demo-section h2 { margin-bottom: 8px; }
+  .demo-section .demo-sub {
+    color: var(--muted); font-size: 0.9rem; margin-top: 0; margin-bottom: 14px;
+  }
+  .demo-q {
+    border-top: 1px solid var(--border); padding: 14px 0 6px;
+  }
+  .demo-q:first-of-type { border-top: none; padding-top: 4px; }
+  .demo-q .q {
+    font-weight: 600; color: var(--accent-dark); margin: 0 0 8px; font-size: 0.98rem;
+  }
+  .demo-q .a {
+    white-space: pre-wrap; font-size: 0.92rem; line-height: 1.55; color: var(--text);
+  }
+  .legal-footer {
+    margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border);
+    font-size: 0.8rem; color: var(--muted); text-align: center;
+  }
+  .legal-footer a { color: var(--muted); text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -335,8 +396,9 @@
       </div>
       <div class="row">
         <div class="field">
-          <label for="dob">Date of Birth (mm/dd/yyyy)</label>
-          <input type="date" id="dob" required>
+          <label for="dob">Date of Birth (dd/mm/yyyy)</label>
+          <input type="text" id="dob" placeholder="dd/mm/yyyy" inputmode="numeric" autocomplete="off" maxlength="10" required>
+          <p id="dob-error" class="field-error" style="display:none;"></p>
         </div>
         <div class="field">
           <label for="tob">Time of Birth (AM/PM)</label>
@@ -358,6 +420,90 @@
   </div>
 
   <div id="results"></div>
+
+  <div id="demo-section" class="card demo-section">
+    <h2>See how it reads a real chart</h2>
+    <p class="demo-sub">Three sample questions answered from a real natal chart, using classical Parashari technique. Confidence levels are gated by cross-validation — no one-line answers.</p>
+
+    <div class="demo-q">
+      <p class="q">Q: I'm in the first year of a 19-year Saturn Mahadasha. How should I think about the next two years for career?</p>
+      <div class="a">Working from:
+  Lagna: Virgo. Saturn (natal) in Virgo, own sign, retrograde, in the 1st house.
+  Current: Saturn Mahadasha (Jan 2025 – Jan 2044), Saturn Antardasha (through Jan 2028), Venus Pratyantardasha (Jan – Aug 2026).
+  Saturn transiting Pisces (7th from Lagna), Rahu transiting Aquarius (6th from Lagna).
+
+Method:
+  Classical Vedic (Parashari). Two techniques cross-checked: (a) Saturn's dignity and house condition as MD lord, and (b) Saturn's current transit relative to the natal 10th.
+
+Analysis:
+  Saturn in own sign in the 1st is a strong Saturn placement — it delivers Saturn's karmic themes (structure, discipline, slow-but-permanent gains) rather than obstructing them. This is HIGH-quality raw material for a Saturn MD; it does not read as an "affliction" period.
+  Sasa Yoga is present — Saturn in own sign in a kendra (1st) from Lagna, per Parashari. This confers durability of position and slow accumulation via effort, especially in the second half of the dasha.
+  Saturn is aspecting its own 3rd, 7th, and 10th from Virgo — meaning it directly aspects the 10th house of career (Gemini), reinforcing the career-through-Saturn theme.
+  Venus PD (Jan–Aug 2026) softens the tone: Venus is in Pisces (exalted) in the natal 7th. A Saturn/Venus sub-period tends to reward negotiated deals, partnerships, and long-form service delivery over quick pivots.
+  Transit: Saturn currently in Pisces (7th from Lagna) is textbook for consolidation of partnerships, contracts, and one-on-one professional dealings — not new launches.
+
+Prediction:
+  Career direction over the next 24 months: consolidation and depth in an existing track, not reinvention. Formalized roles, contracts, or partnerships initiated in this window are likely to become the spine of the whole Saturn MD. Sudden pivots are poorly supported; patient scaling is well supported. Confidence: HIGH (Saturn dignity + Sasa Yoga + transit through 7th all point the same way).
+
+Practical guidance:
+  Say yes to structural commitments (multi-year contracts, formalized partnerships, a defined role in an org) even if the ROI looks slow. Say no to speculative rebrands. Track deliverables in writing — Saturn rewards documentation.</div>
+    </div>
+
+    <div class="demo-q">
+      <p class="q">Q: What does the D9 (Navamsa) say about my marriage?</p>
+      <div class="a">Working from:
+  D1: Venus (karaka for marriage) in Pisces, exalted, in the 7th from Lagna.
+  D9 lagna: Aries. D9 7th house = Libra. Venus in D9 is in Capricorn (10th from D9 lagna), conjunct Sun and Saturn.
+  Jupiter (karaka for husband/dharma of union) in D9 is in Cancer, exalted.
+
+Method:
+  Classical Vedic. Two independent techniques: (a) D1 7th-house strength + Venus dignity, and (b) D9 Venus condition + D9 7th lord's condition.
+
+Analysis:
+  D1 signal is strong: Venus exalted in the 7th means the marriage significator is deployed exactly where it belongs, at maximum dignity. This is a HIGH-quality baseline.
+  D9 signal is mixed and important. Venus is with Saturn and Sun in Capricorn — Saturn contact matures the marriage (later timing, weightier partner, karmic bond) rather than blocking it; Sun contact can bring ego/authority friction if unmanaged. This is not "bad" — it is Saturn asking for commitment and Sun asking for respect for autonomy.
+  Jupiter exalted in D9 in Cancer is a strong dharmic-support signal for the union — the marriage carries weight in life direction, not just companionship.
+  D9 7th house is Libra (Venus-ruled), and Venus is placed in D9 10th — Venus supporting the 7th from a career-and-status house means marriage tends to intersect with public/professional identity, positively.
+
+Prediction:
+  The marriage is a load-bearing life structure, not a light or transient one — Saturn's D9 signature makes that reading firm. Compatibility is strong on the shared-mission axis (Jupiter exalted), and there is asked-for discipline around ego expression and independent authority (Sun + Saturn on Venus in D9). Confidence: MEDIUM–HIGH (three techniques align on "structural, dharmic union"; mixed D9 tempers a purely light "romantic bliss" reading).
+
+Practical guidance:
+  Optimize for a partner who values structure and shared purpose. Recurring friction points to watch are around autonomy and public-facing decisions — build a habit of naming the boundary explicitly, not implicitly.</div>
+    </div>
+
+    <div class="demo-q">
+      <p class="q">Q: What long-standing health themes should I watch, and is anything active right now?</p>
+      <div class="a">Working from:
+  Lagna: Virgo (Mercury-ruled, mutable earth — nervous/digestive constitution).
+  6th house (health/disease): Aquarius, occupied by Sun, Mercury, and Ketu.
+  D1 Mars in Leo, retrograde, in the 12th house.
+  Current: Saturn MD, Saturn AD, Venus PD. Saturn transiting Pisces (7th).
+  Note: Ketu retrograde is a definitional property of the mean node, NOT a health signal — I am not counting it as one.
+
+Method:
+  Classical Vedic + D12 (Dwadashamsa, health/parents varga) cross-check.
+
+Analysis:
+  Virgo Lagna sets a lifelong nervous-system + digestive tendency: stress-somatization, gut sensitivity, over-analysis-driven insomnia. This is constitutional, not episodic.
+  Sun + Mercury in the 6th in Aquarius is a strong "mental restlessness → health" axis: heat signs in the 6th classically indicate acid/pitta imbalance and eye strain from prolonged focused work. Mercury as Lagna lord in the 6th ties this straight to core vitality.
+  Mars retrograde in the 12th (bed of the chart) is a classical marker of below-surface inflammation and sleep-quality disturbance — pent-up Mars energy expressing at night rather than in day-action.
+  D12 Mars is in Capricorn (own-earth, disciplined) — the underlying constitution is resilient if lifestyle is disciplined; poor discipline is what turns latent themes into flares.
+  Current Saturn MD generally slows metabolism and adds joint/skeletal weight-bearing themes as the years progress; Saturn transit through Pisces (7th) can trigger fluid retention and lower-body sluggishness.
+
+Prediction:
+  Chronic themes to actively manage: pitta/acidity, eye strain, sleep quality, later-life joint and metabolic slowdown. Confidence: HIGH (6th-house planetary stack + Virgo Lagna + Mars 12th all agree).
+  Active right now (through Aug 2026): sleep and nervous-system regulation are the priority — Saturn AD + Venus PD in this configuration reads as "your body is asking you to switch from adrenaline-run days to structured rhythm." Confidence: MEDIUM.
+
+Practical guidance:
+  Non-negotiable: fixed sleep window, screens off 60 min before bed (Mars 12th), and a daily pitta-cooling meal cadence (avoid late-night heavy or heating foods). Add a strength + mobility routine before the Saturn MD deepens — it's cheaper to install now than at 55.</div>
+    </div>
+  </div>
+
+  <div id="legal-footer" class="legal-footer">
+    Vedic Astrology Chart · For educational and self-reflection purposes. Not medical, legal, or financial advice.<br>
+    <a href="#" id="link-terms">Terms</a> · <a href="#" id="link-refund">Refund Policy</a> · <a href="#" id="link-privacy">Privacy</a>
+  </div>
 </div>
 
 <script>
@@ -410,6 +556,68 @@
   const placeInput = document.getElementById("place");
   const suggestionsEl = document.getElementById("place-suggestions");
   const placeHintEl = document.getElementById("place-hint");
+  const dobInput = document.getElementById("dob");
+  const dobErrorEl = document.getElementById("dob-error");
+
+  function setDobError(text) {
+    if (!text) {
+      dobErrorEl.style.display = "none";
+      dobErrorEl.textContent = "";
+      dobInput.setAttribute("aria-invalid", "false");
+      return;
+    }
+    dobErrorEl.style.display = "block";
+    dobErrorEl.textContent = text;
+    dobInput.setAttribute("aria-invalid", "true");
+  }
+
+  // Parses a dd/mm/yyyy string into {year, month, day}, or {error} if invalid.
+  function parseDob(value) {
+    const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((value || "").trim());
+    if (!match) {
+      return { error: "Please enter the date as dd/mm/yyyy." };
+    }
+    const day = Number(match[1]);
+    const month = Number(match[2]);
+    const year = Number(match[3]);
+    const currentYear = new Date().getFullYear();
+    if (month < 1 || month > 12) {
+      return { error: "Month must be between 01 and 12." };
+    }
+    if (day < 1 || day > 31) {
+      return { error: "Day must be between 01 and 31." };
+    }
+    if (year < 1900 || year > currentYear) {
+      return { error: `Year must be between 1900 and ${currentYear}.` };
+    }
+    const daysInMonth = new Date(Date.UTC(year, month, 0)).getUTCDate();
+    if (day > daysInMonth) {
+      return { error: "That date doesn't exist — check the day and month." };
+    }
+    return { year, month, day };
+  }
+
+  dobInput.addEventListener("input", () => {
+    const digits = dobInput.value.replace(/\D/g, "").slice(0, 8);
+    let formatted = digits;
+    if (digits.length > 4) {
+      formatted = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+    } else if (digits.length > 2) {
+      formatted = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+    }
+    dobInput.value = formatted;
+    if (digits.length === 8) {
+      setDobError(parseDob(formatted).error || null);
+    } else {
+      setDobError(null);
+    }
+  });
+
+  dobInput.addEventListener("blur", () => {
+    if (dobInput.value.trim()) {
+      setDobError(parseDob(dobInput.value).error || null);
+    }
+  });
 
   function setStatus(text) {
     if (!text) {
@@ -931,6 +1139,8 @@
 
     resultsEl.innerHTML = copyCard
       + lagnaCard
+      + renderAskCard()
+      + renderBuyCreditsCard()
       + renderPlanetsD1(chart.planets_d1)
       + renderDivisionalCharts(chart.divisional_charts, planetsMeta)
       + renderDashaCardShell()
@@ -939,7 +1149,194 @@
     resultsEl.style.display = "block";
     initDashaNav(chart.dasha);
     initCopyChartButton(chart);
+    initAskCard(chart);
+    initBuyCreditsCard();
+    // On this render, the demo section becomes redundant (the user has their
+    // own chart now). Hide it so results dominate the screen.
+    const demo = document.getElementById("demo-section");
+    if (demo) demo.style.display = "none";
   }
+
+  function renderAskCard() {
+    return `
+      <div class="card ask-card" id="ask-card">
+        <h2>Ask a Question About This Chart</h2>
+        <p class="muted" style="margin-top:0;">Career, relationships, health, timing — anything the chart can speak to. Each answer uses classical Parashari technique, cross-validated across two independent methods before high-confidence claims.</p>
+        <textarea id="ask-question" placeholder="e.g. What are the strongest career signals for the next 12 months?"></textarea>
+        <div class="row-inline">
+          <label for="ask-system" class="muted" style="margin:0;">Primary system:</label>
+          <select id="ask-system">
+            <option value="Vedic (Parashari)" selected>Vedic (Parashari)</option>
+            <option value="KP (Krishnamurti Paddhati)">KP (for tight event timing)</option>
+          </select>
+          <input type="text" id="credit-code" placeholder="Credit code" maxlength="20" style="width:180px;">
+          <button type="button" id="ask-submit">Ask</button>
+          <span class="credit-line" id="credit-status">No code entered</span>
+        </div>
+        <div id="ask-error" class="error" style="display:none;"></div>
+        <div id="ask-status" class="status" style="display:none;"></div>
+        <div id="interpretation" class="interpretation" style="display:none;"></div>
+      </div>`;
+  }
+
+  function renderBuyCreditsCard() {
+    return `
+      <div class="card" id="buy-card">
+        <h2>Buy Credits</h2>
+        <p class="muted" style="margin-top:0;">One credit = one detailed interpretation. Payment via Stripe. After paying you'll get a 16-character code — paste it in the Ask box above. No account needed.</p>
+        <div class="packs-grid" id="packs-grid">
+          <p class="muted" style="grid-column: 1 / -1;">Loading packs…</p>
+        </div>
+        <div id="buy-status" class="status" style="display:none;"></div>
+        <div id="buy-error" class="error" style="display:none;"></div>
+      </div>`;
+  }
+
+  function initAskCard(chart) {
+    const askBtn = document.getElementById("ask-submit");
+    const qEl = document.getElementById("ask-question");
+    const sysEl = document.getElementById("ask-system");
+    const codeEl = document.getElementById("credit-code");
+    const errEl = document.getElementById("ask-error");
+    const statEl = document.getElementById("ask-status");
+    const outEl = document.getElementById("interpretation");
+    const creditStatus = document.getElementById("credit-status");
+
+    // Pre-fill any code we already know about (from a fresh Stripe return).
+    const savedCode = sessionStorage.getItem("credit_code");
+    if (savedCode) codeEl.value = savedCode;
+
+    async function refreshBalance() {
+      const code = codeEl.value.trim().toUpperCase();
+      if (!code) { creditStatus.textContent = "No code entered"; return; }
+      try {
+        const r = await fetch(`${API_BASE}/credits/balance?code=${encodeURIComponent(code)}`);
+        if (!r.ok) { creditStatus.innerHTML = "Code not recognized"; return; }
+        const j = await r.json();
+        creditStatus.innerHTML = `Credits: <strong>${j.credits_remaining}</strong>`;
+      } catch (e) {
+        creditStatus.textContent = "Could not check balance";
+      }
+    }
+    codeEl.addEventListener("blur", refreshBalance);
+    codeEl.addEventListener("change", refreshBalance);
+    if (savedCode) refreshBalance();
+
+    askBtn.addEventListener("click", async () => {
+      errEl.style.display = "none"; outEl.style.display = "none";
+      const q = qEl.value.trim();
+      const code = codeEl.value.trim().toUpperCase();
+      if (!q) { errEl.textContent = "Please type a question."; errEl.style.display = "block"; return; }
+      if (!code) { errEl.textContent = "Please enter a credit code, or buy credits below."; errEl.style.display = "block"; return; }
+
+      askBtn.disabled = true;
+      statEl.style.display = "block";
+      statEl.textContent = "Interpreting… (usually 15–40 seconds)";
+      try {
+        const r = await fetch(`${API_BASE}/interpret`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chart,
+            question: q,
+            primary_system: sysEl.value,
+            credit_code: code,
+          }),
+        });
+        if (!r.ok) {
+          const msg = await extractErrorMessage(r);
+          throw new Error(msg || `Request failed (${r.status})`);
+        }
+        const j = await r.json();
+        outEl.textContent = j.interpretation || "(No interpretation returned.)";
+        outEl.style.display = "block";
+        creditStatus.innerHTML = `Credits: <strong>${j.credits_remaining}</strong>`;
+      } catch (err) {
+        errEl.textContent = err.message || "Something went wrong.";
+        errEl.style.display = "block";
+      } finally {
+        askBtn.disabled = false;
+        statEl.style.display = "none";
+      }
+    });
+  }
+
+  async function initBuyCreditsCard() {
+    const grid = document.getElementById("packs-grid");
+    const errEl = document.getElementById("buy-error");
+    const statEl = document.getElementById("buy-status");
+    try {
+      const r = await fetch(`${API_BASE}/credits/packs`);
+      if (!r.ok) throw new Error("Could not load packs");
+      const j = await r.json();
+      grid.innerHTML = j.packs.map(p => {
+        const amount = (p.amount / 100).toFixed(0);
+        const symbol = p.currency === "inr" ? "₹" : (p.currency === "usd" ? "$" : p.currency.toUpperCase() + " ");
+        return `
+          <div class="pack">
+            <h4>${escapeHtml(p.label)}</h4>
+            <div class="price">${symbol}${amount}</div>
+            <div class="muted" style="font-size:0.82rem; margin-bottom:8px;">${p.credits} questions</div>
+            <button type="button" data-pack-id="${p.id}">Buy</button>
+          </div>`;
+      }).join("");
+      grid.querySelectorAll("button[data-pack-id]").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          errEl.style.display = "none";
+          statEl.style.display = "block";
+          statEl.textContent = "Redirecting to Stripe…";
+          try {
+            const packId = btn.getAttribute("data-pack-id");
+            const cr = await fetch(`${API_BASE}/stripe/checkout`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pack_id: packId }),
+            });
+            if (!cr.ok) {
+              const msg = await extractErrorMessage(cr);
+              throw new Error(msg || "Checkout unavailable");
+            }
+            const j2 = await cr.json();
+            window.location.href = j2.checkout_url;
+          } catch (e) {
+            errEl.textContent = e.message || "Could not start checkout.";
+            errEl.style.display = "block";
+            statEl.style.display = "none";
+          }
+        });
+      });
+    } catch (e) {
+      grid.innerHTML = `<p class="muted" style="grid-column: 1 / -1;">Payments are not configured yet. If you're the site owner, set STRIPE_SECRET_KEY on the backend service.</p>`;
+    }
+  }
+
+  // On return from Stripe (?checkout=success&session_id=...), poll /stripe/redeem
+  // for the newly-minted code and stash it in sessionStorage so the Ask card
+  // picks it up on the next chart render.
+  (async function handleStripeReturn() {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("checkout") !== "success") return;
+    const sid = p.get("session_id");
+    if (!sid) return;
+    const banner = document.createElement("div");
+    banner.className = "card";
+    banner.innerHTML = `<h2>Payment received</h2><p id="redeem-line" class="muted">Fetching your credit code…</p>`;
+    document.querySelector(".container").insertBefore(banner, document.querySelector(".container").children[2]);
+    const line = banner.querySelector("#redeem-line");
+    for (let attempt = 0; attempt < 15; attempt++) {
+      try {
+        const r = await fetch(`${API_BASE}/stripe/redeem?session_id=${encodeURIComponent(sid)}`);
+        if (r.ok) {
+          const j = await r.json();
+          sessionStorage.setItem("credit_code", j.code);
+          line.innerHTML = `Your credit code: <strong style="color: var(--accent-dark); font-family: monospace;">${j.code}</strong> · <span>${j.credits_remaining} credits</span>. Copy it somewhere safe — this is your only receipt.`;
+          return;
+        }
+      } catch (e) {}
+      await new Promise(r => setTimeout(r, 2000));
+    }
+    line.textContent = "Payment succeeded but the credit code hasn't arrived yet. Try refreshing in a minute — if the code still doesn't show, contact support with your Stripe receipt.";
+  })();
 
   function initCopyChartButton(chart) {
     const btn = document.getElementById("copy-chart-btn");
@@ -972,10 +1369,10 @@
     resultsEl.innerHTML = "";
 
     const name = document.getElementById("name").value.trim();
-    const dob = document.getElementById("dob").value;   // YYYY-MM-DD
+    const dobValue = dobInput.value.trim();   // dd/mm/yyyy
     const tob = document.getElementById("tob").value;   // HH:MM
 
-    if (!name || !dob || !tob) {
+    if (!name || !dobValue || !tob) {
       setError("Please fill in all fields.");
       return;
     }
@@ -984,7 +1381,15 @@
       return;
     }
 
-    const [year, month, day] = dob.split("-").map(Number);
+    const dobResult = parseDob(dobValue);
+    if (dobResult.error) {
+      setDobError(dobResult.error);
+      setError("Please fix the Date of Birth field before submitting.");
+      return;
+    }
+    setDobError(null);
+
+    const { year, month, day } = dobResult;
     const [hour, minute] = tob.split(":").map(Number);
 
     setLoading(true);

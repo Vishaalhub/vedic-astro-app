@@ -6,6 +6,23 @@ services:
     plan: free
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn api:app --host 0.0.0.0 --port $PORT
+    envVars:
+      # Set these in the Render dashboard (Environment tab). Never commit real values.
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-5
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: FRONTEND_BASE_URL
+        value: https://vishaalvedic-astro-app.onrender.com
+      - key: CREDITS_CURRENCY
+        value: inr
+      # CREDITS_DB_PATH: default /tmp/credits.sqlite3 is ephemeral on free tier —
+      # attach a Render disk (paid plan) and point this at /var/data/credits.sqlite3
+      # before scaling. Fine for soft-launch.
 
   # Static frontend -- frontend/index.html, no build step
   - type: web
