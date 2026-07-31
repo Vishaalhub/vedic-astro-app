@@ -24,7 +24,7 @@ Everything below is what needs to happen between "code is written" and "money hi
 cd C:\Projects\vedic-astro-app
 git status                          # see what's changed
 git add -A
-git commit -m "Add LLM interpretation + Stripe monetization + demo Q&A"
+git commit -m "Add LLM interpretation + Stripe monetization"
 git push
 ```
 Render auto-deploys both services (`vedic-astro-api`, `vedic-astro-frontend`) on push.
@@ -73,8 +73,6 @@ Two options: (a) write these yourself and swap the `#` in the footer for real pa
 - **Rate limiting**: not implemented. If someone shares a credit code publicly, it drains fast but that's their loss. Consider adding IP-based throttling in `api.py` if abuse shows up.
 
 ## 8. Marketing hooks already in the code
-- Landing page shows 3 fully-worked demo Q&As before a visitor even enters birth details — this is the "show, don't tell" that converts.
-- Demo section auto-hides once a real chart is generated, so it doesn't clutter the results view.
 - Each interpretation opens with a "Working from" data-restatement — this builds trust that the answer is grounded in real placements, not generic horoscope filler.
 
 ## 9. Not yet built (post-launch, if it earns)
