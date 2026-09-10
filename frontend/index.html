@@ -328,45 +328,10 @@
     color: var(--dasha-current);
     background: var(--dasha-current-bg);
   }
-  /* Ask-a-Question & credits */
-  .ask-card textarea {
-    width: 100%; min-height: 90px; padding: 10px;
-    border: 1px solid var(--border); border-radius: 5px;
-    font-family: inherit; font-size: 0.95rem; color: var(--text);
-    background: #fff; resize: vertical;
-  }
-  .ask-card .row-inline {
-    display: flex; gap: 12px; margin-top: 12px; flex-wrap: wrap; align-items: center;
-  }
-  .ask-card select, .ask-card input[type="text"] {
-    padding: 9px 10px; border: 1px solid var(--border); border-radius: 5px;
-    font-size: 0.95rem; background: #fff; color: var(--text);
-  }
-  .ask-card .credit-line {
-    font-size: 0.85rem; color: var(--muted); margin-left: auto;
-  }
-  .ask-card .credit-line strong { color: var(--accent-dark); }
-  .interpretation {
-    margin-top: 18px; padding: 16px 18px;
-    background: #fbf8f2; border: 1px solid var(--border); border-radius: 6px;
-    white-space: pre-wrap; font-size: 0.95rem; line-height: 1.55;
-  }
-  .packs-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 12px; margin-top: 14px;
-  }
-  .pack {
-    border: 1px solid var(--border); border-radius: 6px; padding: 14px;
-    background: #fff; text-align: center;
-  }
-  .pack h4 { margin: 0 0 6px; font-size: 0.95rem; color: var(--accent-dark); }
-  .pack .price { font-size: 1.35rem; font-weight: 700; margin: 4px 0 8px; }
-  .pack button { width: 100%; padding: 8px 12px; font-size: 0.9rem; }
   .legal-footer {
     margin-top: 32px; padding-top: 18px; border-top: 1px solid var(--border);
     font-size: 0.8rem; color: var(--muted); text-align: center;
   }
-  .legal-footer a { color: var(--muted); text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -409,8 +374,7 @@
   <div id="results"></div>
 
   <div id="legal-footer" class="legal-footer">
-    Vedic Astrology Chart · For educational and self-reflection purposes. Not medical, legal, or financial advice.<br>
-    <a href="#" id="link-terms">Terms</a> · <a href="#" id="link-refund">Refund Policy</a> · <a href="#" id="link-privacy">Privacy</a>
+    Vedic Astrology Chart · For educational and self-reflection purposes. Not medical, legal, or financial advice.
   </div>
 </div>
 
@@ -1047,8 +1011,6 @@
 
     resultsEl.innerHTML = copyCard
       + lagnaCard
-      + renderAskCard()
-      + renderBuyCreditsCard()
       + renderPlanetsD1(chart.planets_d1)
       + renderDivisionalCharts(chart.divisional_charts, planetsMeta)
       + renderDashaCardShell()
@@ -1057,190 +1019,7 @@
     resultsEl.style.display = "block";
     initDashaNav(chart.dasha);
     initCopyChartButton(chart);
-    initAskCard(chart);
-    initBuyCreditsCard();
   }
-
-  function renderAskCard() {
-    return `
-      <div class="card ask-card" id="ask-card">
-        <h2>Ask a Question About This Chart</h2>
-        <p class="muted" style="margin-top:0;">Career, relationships, health, timing — anything the chart can speak to. Each answer uses classical Parashari technique, cross-validated across two independent methods before high-confidence claims.</p>
-        <textarea id="ask-question" placeholder="e.g. What are the strongest career signals for the next 12 months?"></textarea>
-        <div class="row-inline">
-          <label for="ask-system" class="muted" style="margin:0;">Primary system:</label>
-          <select id="ask-system">
-            <option value="Vedic (Parashari)" selected>Vedic (Parashari)</option>
-            <option value="KP (Krishnamurti Paddhati)">KP (for tight event timing)</option>
-          </select>
-          <input type="text" id="credit-code" placeholder="Credit code" maxlength="20" style="width:180px;">
-          <button type="button" id="ask-submit">Ask</button>
-          <span class="credit-line" id="credit-status">No code entered</span>
-        </div>
-        <div id="ask-error" class="error" style="display:none;"></div>
-        <div id="ask-status" class="status" style="display:none;"></div>
-        <div id="interpretation" class="interpretation" style="display:none;"></div>
-      </div>`;
-  }
-
-  function renderBuyCreditsCard() {
-    return `
-      <div class="card" id="buy-card">
-        <h2>Buy Credits</h2>
-        <p class="muted" style="margin-top:0;">One credit = one detailed interpretation. Payment via Stripe. After paying you'll get a 16-character code — paste it in the Ask box above. No account needed.</p>
-        <div class="packs-grid" id="packs-grid">
-          <p class="muted" style="grid-column: 1 / -1;">Loading packs…</p>
-        </div>
-        <div id="buy-status" class="status" style="display:none;"></div>
-        <div id="buy-error" class="error" style="display:none;"></div>
-      </div>`;
-  }
-
-  function initAskCard(chart) {
-    const askBtn = document.getElementById("ask-submit");
-    const qEl = document.getElementById("ask-question");
-    const sysEl = document.getElementById("ask-system");
-    const codeEl = document.getElementById("credit-code");
-    const errEl = document.getElementById("ask-error");
-    const statEl = document.getElementById("ask-status");
-    const outEl = document.getElementById("interpretation");
-    const creditStatus = document.getElementById("credit-status");
-
-    // Pre-fill any code we already know about (from a fresh Stripe return).
-    const savedCode = sessionStorage.getItem("credit_code");
-    if (savedCode) codeEl.value = savedCode;
-
-    async function refreshBalance() {
-      const code = codeEl.value.trim().toUpperCase();
-      if (!code) { creditStatus.textContent = "No code entered"; return; }
-      try {
-        const r = await fetch(`${API_BASE}/credits/balance?code=${encodeURIComponent(code)}`);
-        if (!r.ok) { creditStatus.innerHTML = "Code not recognized"; return; }
-        const j = await r.json();
-        creditStatus.innerHTML = `Credits: <strong>${j.credits_remaining}</strong>`;
-      } catch (e) {
-        creditStatus.textContent = "Could not check balance";
-      }
-    }
-    codeEl.addEventListener("blur", refreshBalance);
-    codeEl.addEventListener("change", refreshBalance);
-    if (savedCode) refreshBalance();
-
-    askBtn.addEventListener("click", async () => {
-      errEl.style.display = "none"; outEl.style.display = "none";
-      const q = qEl.value.trim();
-      const code = codeEl.value.trim().toUpperCase();
-      if (!q) { errEl.textContent = "Please type a question."; errEl.style.display = "block"; return; }
-      if (!code) { errEl.textContent = "Please enter a credit code, or buy credits below."; errEl.style.display = "block"; return; }
-
-      askBtn.disabled = true;
-      statEl.style.display = "block";
-      statEl.textContent = "Interpreting… (usually 15–40 seconds)";
-      try {
-        const r = await fetch(`${API_BASE}/interpret`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chart,
-            question: q,
-            primary_system: sysEl.value,
-            credit_code: code,
-          }),
-        });
-        if (!r.ok) {
-          const msg = await extractErrorMessage(r);
-          throw new Error(msg || `Request failed (${r.status})`);
-        }
-        const j = await r.json();
-        outEl.textContent = j.interpretation || "(No interpretation returned.)";
-        outEl.style.display = "block";
-        creditStatus.innerHTML = `Credits: <strong>${j.credits_remaining}</strong>`;
-      } catch (err) {
-        errEl.textContent = err.message || "Something went wrong.";
-        errEl.style.display = "block";
-      } finally {
-        askBtn.disabled = false;
-        statEl.style.display = "none";
-      }
-    });
-  }
-
-  async function initBuyCreditsCard() {
-    const grid = document.getElementById("packs-grid");
-    const errEl = document.getElementById("buy-error");
-    const statEl = document.getElementById("buy-status");
-    try {
-      const r = await fetch(`${API_BASE}/credits/packs`);
-      if (!r.ok) throw new Error("Could not load packs");
-      const j = await r.json();
-      grid.innerHTML = j.packs.map(p => {
-        const amount = (p.amount / 100).toFixed(0);
-        const symbol = p.currency === "inr" ? "₹" : (p.currency === "usd" ? "$" : p.currency.toUpperCase() + " ");
-        return `
-          <div class="pack">
-            <h4>${escapeHtml(p.label)}</h4>
-            <div class="price">${symbol}${amount}</div>
-            <div class="muted" style="font-size:0.82rem; margin-bottom:8px;">${p.credits} questions</div>
-            <button type="button" data-pack-id="${p.id}">Buy</button>
-          </div>`;
-      }).join("");
-      grid.querySelectorAll("button[data-pack-id]").forEach(btn => {
-        btn.addEventListener("click", async () => {
-          errEl.style.display = "none";
-          statEl.style.display = "block";
-          statEl.textContent = "Redirecting to Stripe…";
-          try {
-            const packId = btn.getAttribute("data-pack-id");
-            const cr = await fetch(`${API_BASE}/stripe/checkout`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pack_id: packId }),
-            });
-            if (!cr.ok) {
-              const msg = await extractErrorMessage(cr);
-              throw new Error(msg || "Checkout unavailable");
-            }
-            const j2 = await cr.json();
-            window.location.href = j2.checkout_url;
-          } catch (e) {
-            errEl.textContent = e.message || "Could not start checkout.";
-            errEl.style.display = "block";
-            statEl.style.display = "none";
-          }
-        });
-      });
-    } catch (e) {
-      grid.innerHTML = `<p class="muted" style="grid-column: 1 / -1;">Payments are not configured yet. If you're the site owner, set STRIPE_SECRET_KEY on the backend service.</p>`;
-    }
-  }
-
-  // On return from Stripe (?checkout=success&session_id=...), poll /stripe/redeem
-  // for the newly-minted code and stash it in sessionStorage so the Ask card
-  // picks it up on the next chart render.
-  (async function handleStripeReturn() {
-    const p = new URLSearchParams(window.location.search);
-    if (p.get("checkout") !== "success") return;
-    const sid = p.get("session_id");
-    if (!sid) return;
-    const banner = document.createElement("div");
-    banner.className = "card";
-    banner.innerHTML = `<h2>Payment received</h2><p id="redeem-line" class="muted">Fetching your credit code…</p>`;
-    document.querySelector(".container").insertBefore(banner, document.querySelector(".container").children[2]);
-    const line = banner.querySelector("#redeem-line");
-    for (let attempt = 0; attempt < 15; attempt++) {
-      try {
-        const r = await fetch(`${API_BASE}/stripe/redeem?session_id=${encodeURIComponent(sid)}`);
-        if (r.ok) {
-          const j = await r.json();
-          sessionStorage.setItem("credit_code", j.code);
-          line.innerHTML = `Your credit code: <strong style="color: var(--accent-dark); font-family: monospace;">${j.code}</strong> · <span>${j.credits_remaining} credits</span>. Copy it somewhere safe — this is your only receipt.`;
-          return;
-        }
-      } catch (e) {}
-      await new Promise(r => setTimeout(r, 2000));
-    }
-    line.textContent = "Payment succeeded but the credit code hasn't arrived yet. Try refreshing in a minute — if the code still doesn't show, contact support with your Stripe receipt.";
-  })();
 
   function initCopyChartButton(chart) {
     const btn = document.getElementById("copy-chart-btn");
