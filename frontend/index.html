@@ -564,13 +564,28 @@
   let selectedPlace = null;   // {display_name, latitude, longitude} once picked from the dropdown
   let debounceTimer = null;
   let suggestionResults = [];
+  // Bumped whenever an in-flight lookup stops being the one the user is
+  // waiting on (they typed again, picked a place, or submitted). A lookup
+  // records this token when it starts and drops its own response if the
+  // token has moved on -- /places/search is throttled to 1 req/sec upstream
+  // and can take tens of seconds, so a reply for an abandoned prefix (even
+  // one typed for a *previous* person) could otherwise land much later and
+  // repopulate the dropdown over the Generate Chart button, letting a click
+  // meant for that button silently re-pick the old place's coordinates.
+  let lookupToken = 0;
+
+  function cancelPlaceLookup() {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+    lookupToken++;
+  }
 
   placeInput.addEventListener("input", () => {
     selectedPlace = null;
+    cancelPlaceLookup();
     updateSubmitState();
     const q = placeInput.value.trim();
     placeHintEl.style.display = q ? "block" : "none";
-    clearTimeout(debounceTimer);
     if (q.length < 3) {
       hideSuggestions();
       return;
@@ -584,15 +599,19 @@
   });
 
   async function fetchSuggestions(q) {
+    const token = lookupToken;
     try {
       const resp = await fetch(`${API_BASE}/places/search?q=${encodeURIComponent(q)}`);
+      if (token !== lookupToken) return;   // superseded while in flight
       if (!resp.ok) {
         hideSuggestions();
         return;
       }
       const results = await resp.json();
+      if (token !== lookupToken) return;
       renderSuggestions(results);
     } catch (err) {
+      if (token !== lookupToken) return;
       hideSuggestions();
     }
   }
@@ -612,6 +631,7 @@
   function hideSuggestions() {
     suggestionsEl.hidden = true;
     suggestionsEl.innerHTML = "";
+    suggestionResults = [];
   }
 
   suggestionsEl.addEventListener("mousedown", (e) => {
@@ -619,6 +639,8 @@
     const li = e.target.closest("li");
     if (!li) return;
     const picked = suggestionResults[Number(li.dataset.index)];
+    if (!picked) return;
+    cancelPlaceLookup();
     selectedPlace = picked;
     placeInput.value = picked.display_name;
     placeHintEl.style.display = "none";
@@ -1049,7 +1071,9 @@
     e.preventDefault();
     setError(null);
     resultsEl.style.display = "none";
-    resultsEl.innerHTML = "";
+    resultsEl.innerHTML = "";   // drop the previous chart (and its copy button) up front
+    cancelPlaceLookup();
+    hideSuggestions();
 
     const name = document.getElementById("name").value.trim();
     const dobValue = dobInput.value.trim();   // dd/mm/yyyy
